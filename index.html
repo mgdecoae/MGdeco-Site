@@ -139,21 +139,84 @@
     overflow: hidden;
   }
 
-  .hero__media {
+  /* Slide container — parallax translates this, Ken Burns animates child imgs */
+  .hero__slides {
     position: absolute;
     inset: 0;
-    background: #2b2723 url("https://cdn.jsdelivr.net/gh/mgdecoae/mgdeco-ae@main/images/SA1.jpeg") center/cover;
+    overflow: hidden;
+    will-change: transform;
+    background: #2b2723;
+  }
+
+  .hero__slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s var(--ease-out);
+    will-change: opacity;
+  }
+
+  .hero__slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     filter: brightness(0.55);
     transform: scale(1.08);
-    animation: heroZoom 16s var(--ease-out) forwards;
     will-change: transform;
   }
-  @keyframes heroZoom { to { transform: scale(1); } }
+
+  .hero__slide.is-active { opacity: 1; }
+
+  /* Per-slide Ken Burns — restarts each time a slide becomes active */
+  .hero__slide.is-active img {
+    animation: heroZoom 9s var(--ease-out) forwards;
+  }
+  @keyframes heroZoom {
+    from { transform: scale(1.08); }
+    to   { transform: scale(1); }
+  }
+
+  /* Hero dots */
+  .hero__dots {
+    position: absolute;
+    left: var(--gutter);
+    bottom: clamp(1.25rem, 3vw, 2rem);
+    z-index: 4;
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .hero__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.3s var(--ease), transform 0.3s var(--ease), border-color 0.3s var(--ease);
+  }
+
+  .hero__dot:hover {
+    transform: scale(1.25);
+    border-color: #fff;
+  }
+
+  .hero__dot.is-active {
+    background: #fff;
+    border-color: #fff;
+  }
+
+  .hero__dot:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
 
   .hero__inner {
     position: relative;
     padding-block: clamp(3rem, 8vw, 6rem);
     max-width: 900px;
+    z-index: 2;
   }
 
   .hero .eyebrow { color: rgba(255,255,255,0.75); margin-bottom: 1.25rem; }
@@ -223,10 +286,9 @@
     display: grid;
     grid-template-columns: repeat(12, 1fr);
     gap: clamp(1rem, 2vw, 1.5rem);
-    perspective: 1200px; /* enables 3D tilt on children */
+    perspective: 1200px;
   }
 
-  /* The spotlight overlay that follows the cursor */
   .projects::before {
     content: "";
     position: absolute;
@@ -255,7 +317,6 @@
     will-change: transform;
   }
 
-  /* Inner glow per-card when cursor is near */
   .card::after {
     content: "";
     position: absolute;
@@ -458,14 +519,12 @@
   .back-btn:hover { gap: 0.9rem; color: var(--accent); border-color: var(--accent); }
 
   /* ---------- View Transitions ---------- */
-  /* Default cross-fade */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation-duration: 0.45s;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Shared element: the card image morphs into destination hero */
   ::view-transition-group(hero-media) {
     animation-duration: 0.7s;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
@@ -477,7 +536,6 @@
     mix-blend-mode: normal;
   }
 
-  /* Slow down and smooth out the root fade to feel premium */
   ::view-transition-old(root) {
     animation-name: vtFadeOut;
   }
@@ -492,7 +550,7 @@
     to   { opacity: 1; transform: scale(1); }
   }
 
-  /* Reduced motion: no view transitions, no cursor effects */
+  /* Reduced motion: no view transitions, no cursor effects, no hero rotation */
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after {
@@ -500,7 +558,13 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
     }
-    .hero__media { animation: none; transform: none; }
+    .hero__slide { transition: none; }
+    .hero__slide img {
+      animation: none !important;
+      transform: none;
+      filter: brightness(0.55);
+    }
+    .hero__dots { display: none; }
     .kinetic-line > span { transform: none; animation: none; }
     .hero .eyebrow, .hero .lede { opacity: 1; transform: none; animation: none; }
     .reveal { opacity: 1; transform: none; }
@@ -538,7 +602,8 @@
 
     <!-- HERO -->
     <div class="hero">
-      <div class="hero__media" id="heroMedia" style="view-transition-name: hero-media;" role="img" aria-label="Modern building facade at dusk"></div>
+      <div class="hero__slides" id="heroSlides" style="view-transition-name: hero-media;" aria-hidden="true"></div>
+      <div class="hero__dots" id="heroDots" role="tablist" aria-label="Hero image selector"></div>
       <div class="wrap hero__inner">
         <p class="eyebrow">Architecture · Interior Design · Urban Solution Strategy</p>
         <h1 class="display">
@@ -794,11 +859,140 @@
   document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
 
   /* =========================================================
-     3. SCROLL PROGRESS + HEADER SHOW/HIDE + PARALLAX
+     3. HERO SLIDER — data-driven crossfade
+     ========================================================= */
+  const heroSlides = [
+    {
+      src: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2400&q=80",
+      alt: "Modern glass office towers at dusk"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=2400&q=80",
+      alt: "Geometric concrete building facade"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2400&q=80",
+      alt: "Bright open-plan interior with floor-to-ceiling glazing"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1470723710355-95304d8aece4?auto=format&fit=crop&w=2400&q=80",
+      alt: "Cultural building with public plaza at golden hour"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2400&q=80",
+      alt: "Contemporary residential interior"
+    }
+  ];
+
+  const heroSlidesEl = document.getElementById('heroSlides');
+  const heroDotsEl = document.getElementById('heroDots');
+
+  let heroIndex = 0;
+  let heroTimer = null;
+  let heroPaused = false;
+  const HERO_INTERVAL = 6500; // ms
+
+  function renderHero() {
+    if (!heroSlidesEl) return;
+
+    heroSlides.forEach((slide, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'hero__slide' + (i === 0 ? ' is-active' : '');
+      wrap.dataset.index = i;
+
+      const img = document.createElement('img');
+      img.src = slide.src;
+      img.alt = slide.alt;
+      if (i === 0) {
+        img.fetchPriority = 'high';
+        img.loading = 'eager';
+      } else {
+        img.loading = 'lazy';
+      }
+      img.addEventListener('error', () => wrap.remove());
+
+      wrap.appendChild(img);
+      heroSlidesEl.appendChild(wrap);
+    });
+
+    if (heroDotsEl) {
+      heroSlides.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'hero__dot' + (i === 0 ? ' is-active' : '');
+        dot.setAttribute('role', 'tab');
+        dot.setAttribute('aria-label', `Show hero image ${i + 1}`);
+        dot.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+        dot.addEventListener('click', () => goToHero(i, true));
+        heroDotsEl.appendChild(dot);
+      });
+    }
+  }
+
+  function goToHero(i, userInitiated = false) {
+    if (!heroSlidesEl) return;
+    const slides = heroSlidesEl.querySelectorAll('.hero__slide');
+    const dots = heroDotsEl ? heroDotsEl.querySelectorAll('.hero__dot') : [];
+    if (!slides.length) return;
+
+    heroIndex = (i + slides.length) % slides.length;
+
+    slides.forEach((s, idx) => s.classList.toggle('is-active', idx === heroIndex));
+    dots.forEach((d, idx) => {
+      d.classList.toggle('is-active', idx === heroIndex);
+      d.setAttribute('aria-selected', idx === heroIndex ? 'true' : 'false');
+    });
+
+    // Restart Ken Burns on the newly active slide
+    const active = slides[heroIndex];
+    const activeImg = active && active.querySelector('img');
+    if (activeImg && !reduceMotion) {
+      activeImg.style.animation = 'none';
+      void activeImg.offsetWidth; // force reflow
+      activeImg.style.animation = '';
+    }
+
+    if (userInitiated) restartHeroTimer();
+  }
+
+  function nextHero() {
+    if (heroPaused) return;
+    goToHero(heroIndex + 1);
+  }
+
+  function restartHeroTimer() {
+    if (heroTimer) clearInterval(heroTimer);
+    if (reduceMotion) return;
+    heroTimer = setInterval(nextHero, HERO_INTERVAL);
+  }
+
+  function startHero() {
+    renderHero();
+    if (reduceMotion) return;
+
+    const heroEl = document.querySelector('.hero');
+
+    if (heroEl) {
+      heroEl.addEventListener('mouseenter', () => { heroPaused = true; });
+      heroEl.addEventListener('mouseleave', () => { heroPaused = false; });
+      heroEl.addEventListener('focusin',   () => { heroPaused = true; });
+      heroEl.addEventListener('focusout',  () => { heroPaused = false; });
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      heroPaused = document.hidden;
+    });
+
+    restartHeroTimer();
+  }
+
+  startHero();
+
+  /* =========================================================
+     4. SCROLL PROGRESS + HEADER SHOW/HIDE + PARALLAX
      ========================================================= */
   const progress = document.getElementById('scrollProgress');
   const header = document.getElementById('siteHeader');
-  const heroMedia = document.getElementById('heroMedia');
   const parallaxEls = Array.from(document.querySelectorAll('[data-parallax]'));
   let lastScroll = 0;
   let ticking = false;
@@ -807,9 +1001,10 @@
     if (reduceMotion) return;
     const vh = window.innerHeight;
 
-    if (heroMedia) {
+    // Parallax the whole slide container, not a single image
+    if (heroSlidesEl) {
       const offset = Math.min(window.scrollY * 0.25, 200);
-      heroMedia.style.transform = `scale(1.08) translateY(${offset}px)`;
+      heroSlidesEl.style.transform = `translateY(${offset}px)`;
     }
 
     parallaxEls.forEach((img) => {
@@ -853,7 +1048,7 @@
   updateParallax();
 
   /* =========================================================
-     4. CURSOR SPOTLIGHT ON PROJECT GRID
+     5. CURSOR SPOTLIGHT ON PROJECT GRID
      ========================================================= */
   const grid = document.getElementById('projectGrid');
   const isFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -862,7 +1057,6 @@
     const cards = Array.from(grid.querySelectorAll('.card'));
     let gridRect = grid.getBoundingClientRect();
 
-    // Recompute on resize
     window.addEventListener('resize', () => {
       gridRect = grid.getBoundingClientRect();
     });
@@ -886,11 +1080,9 @@
       const gx = e.clientX - gridRect.left;
       const gy = e.clientY - gridRect.top;
 
-      // Grid spotlight position (CSS custom props)
       grid.style.setProperty('--mx', gx + 'px');
       grid.style.setProperty('--my', gy + 'px');
 
-      // Per-card effect: tilt toward cursor + inner glow
       cards.forEach((card) => {
         const r = card.getBoundingClientRect();
         const cx = e.clientX - r.left;
@@ -903,16 +1095,14 @@
         if (inside) {
           card.classList.add('is-lit');
 
-          // Tilt: map cursor offset (-1..1) to small rotation
           const nx = (cx / r.width) - 0.5;
           const ny = (cy / r.height) - 0.5;
-          const rotY = nx * 6;   // degrees
+          const rotY = nx * 6;
           const rotX = -ny * 6;
 
           card.style.transform =
             `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(6px)`;
 
-          // Inner glow position
           card.style.setProperty('--cx', cx + 'px');
           card.style.setProperty('--cy', cy + 'px');
         } else {
@@ -924,11 +1114,10 @@
   }
 
   /* =========================================================
-     5. ROUTER + VIEW TRANSITIONS API
+     6. ROUTER + VIEW TRANSITIONS API
      ========================================================= */
   const views = Array.from(document.querySelectorAll('.view'));
   const navLinks = Array.from(document.querySelectorAll('.nav ul a[data-route]'));
-  const main = document.getElementById('main');
   let currentView = 'home';
 
   function setActiveNav(route) {
@@ -945,27 +1134,22 @@
     currentView = route;
     setActiveNav(route);
 
-    // Move focus to the new view's header for a11y
     const heading = next.querySelector('h1, .display');
     if (heading) {
       heading.setAttribute('tabindex', '-1');
       heading.focus({ preventScroll: true });
     }
 
-    // Scroll to top of the new view
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 
-    // Re-run reveal observer for the newly shown view
     next.querySelectorAll('.reveal:not(.is-visible)').forEach((el) => io.observe(el));
 
-    // Recompute parallax after view swap
     requestAnimationFrame(updateParallax);
   }
 
   function navigate(route) {
     if (route === currentView) return;
 
-    // Fallback: no View Transitions support → instant swap
     if (!supportsVT || reduceMotion) {
       showView(route);
       return;
@@ -976,7 +1160,6 @@
     });
   }
 
-  // Intercept all data-route links/buttons
   document.addEventListener('click', (e) => {
     const trigger = e.target.closest('[data-route]');
     if (!trigger) return;
@@ -984,18 +1167,15 @@
     navigate(trigger.dataset.route);
   });
 
-  // Keyboard support for cards
   document.querySelectorAll('.card[tabindex="0"]').forEach((card) => {
     card.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        // Treat as navigating into the work view
         navigate('work');
       }
     });
   });
 
-  // Deep-link on load: #work → work view, etc.
   const hash = window.location.hash.replace('#', '');
   if (hash && views.some((v) => v.dataset.view === hash)) {
     showView(hash);
@@ -1004,7 +1184,7 @@
   }
 
   /* =========================================================
-     6. MOBILE MENU (basic)
+     7. MOBILE MENU (basic)
      ========================================================= */
   const toggle = document.querySelector('.menu-toggle');
   const navUl = document.querySelector('.nav ul');
