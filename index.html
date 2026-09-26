@@ -16,6 +16,7 @@
     --gutter: clamp(1.25rem, 4vw, 4rem);
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --header-h: 64px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,6 +40,7 @@
     max-width: var(--max);
     margin: 0 auto;
     padding-inline: var(--gutter);
+    width: 100%;
   }
 
   /* ---------- Typography ---------- */
@@ -70,16 +72,15 @@
 
   /* ---------- Header ---------- */
   header {
-    position: sticky;
-    top: 0;
+    position: fixed;
+    top: 0; left: 0; right: 0;
     z-index: 50;
     background: rgba(244, 241, 236, 0.85);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
-    transition: transform 0.4s var(--ease), background 0.3s ease;
+    transition: background 0.3s ease;
   }
   header.is-scrolled { background: rgba(244, 241, 236, 0.95); }
-  header.is-hidden { transform: translateY(-100%); }
 
   .nav {
     display: flex;
@@ -129,6 +130,12 @@
     }
   }
 
+  /* Offset main so fixed header doesn't cover view pages.
+     Hero still bleeds its slides up under the fixed header. */
+  main {
+    padding-top: var(--header-h);
+  }
+
   /* ---------- Hero ---------- */
   .hero {
     position: relative;
@@ -137,6 +144,14 @@
     align-items: flex-end;
     color: #fff;
     overflow: hidden;
+    margin-top: calc(-1 * var(--header-h));
+  }
+
+  @media (min-width: 761px) {
+    .hero {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
   }
 
   /* Slide container — parallax translates this, Ken Burns animates child imgs */
@@ -219,6 +234,13 @@
     z-index: 2;
   }
 
+  /* Give hero text breathing room from the fixed nav on desktop */
+  @media (min-width: 761px) {
+    .hero__inner {
+      padding-top: calc(var(--header-h) + clamp(3rem, 6vw, 5rem));
+    }
+  }
+
   .hero .eyebrow { color: rgba(255,255,255,0.75); margin-bottom: 1.25rem; }
 
   .hero p.lede {
@@ -247,14 +269,52 @@
   .hero .lede   { animation-delay: 0.75s; }
   @keyframes fadeUp { to { opacity: 1; transform: none; } }
 
-  /* ---------- Editorial intro ---------- */
+  /* ---------- Editorial intro / Studio ---------- */
+  /* Two-column, two-row grid so "Our services" aligns with "Interior Design" */
   .intro {
     display: grid;
     grid-template-columns: 1fr 2fr;
-    gap: clamp(2rem, 6vw, 6rem);
+    column-gap: clamp(2rem, 6vw, 6rem);
+    row-gap: clamp(2rem, 5vw, 4rem);
     padding-block: clamp(4rem, 10vw, 8rem);
     border-bottom: 1px solid var(--line);
+    align-content: start;
   }
+
+  @media (min-width: 761px) {
+    .intro {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-block: clamp(3rem, 6vw, 5rem);
+    }
+  }
+
+  /* Row 1 */
+  .intro__eyebrow-studio {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+  .intro__lede {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  /* Row 2 — eyebrow and first service item share a baseline.
+     Optical padding mirrors the li a top-padding so they align. */
+  .intro__eyebrow-services {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    padding-top: 0.85rem;
+  }
+  .intro__services {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+
   .intro h2 {
     font-family: Georgia, serif;
     font-weight: 400;
@@ -270,15 +330,104 @@
   }
   .intro.is-visible h2 .word { opacity: 1; transform: none; }
 
-  @media (max-width: 760px) { .intro { grid-template-columns: 1fr; } }
+  /* ---------- Services index list ----------
+     Typography matches the intro paragraph: Georgia serif,
+     same clamp size, same line-height, same tracking, full ink. */
+  .services {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
+
+  .services li {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .services li a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-block: 0.85rem;
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(1.5rem, 2.6vw, 2.25rem);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    transition: color 0.3s var(--ease), padding-left 0.3s var(--ease);
+  }
+
+  .services li a .arrow {
+    display: inline-block;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.3s var(--ease), transform 0.3s var(--ease-out);
+    color: var(--accent);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.55em;
+    line-height: 1;
+  }
+
+  .services li a:hover,
+  .services li a:focus-visible {
+    color: var(--accent);
+    padding-left: 0.5rem;
+    outline: none;
+  }
+
+  .services li a:hover .arrow,
+  .services li a:focus-visible .arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  @media (max-width: 760px) {
+    .intro {
+      grid-template-columns: 1fr;
+      row-gap: 1.5rem;
+    }
+    .intro__eyebrow-studio,
+    .intro__lede,
+    .intro__eyebrow-services,
+    .intro__services {
+      grid-column: 1;
+    }
+    .intro__eyebrow-studio { grid-row: 1; }
+    .intro__lede           { grid-row: 2; }
+    .intro__eyebrow-services {
+      grid-row: 3;
+      padding-top: 0;
+    }
+    .intro__services       { grid-row: 4; }
+  }
 
   /* ---------- Project grid + CURSOR SPOTLIGHT ---------- */
+  .section-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  @media (min-width: 761px) {
+    .section-block {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-block: clamp(3rem, 6vw, 5rem);
+    }
+  }
+
   .section-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     padding-block: clamp(3rem, 7vw, 5rem) 2rem;
     gap: 1rem;
+  }
+
+  @media (min-width: 761px) {
+    .section-head { padding-top: 0; }
   }
 
   .projects {
@@ -394,6 +543,15 @@
     padding-block: clamp(4rem, 10vw, 8rem);
     border-top: 1px solid var(--line);
   }
+
+  @media (min-width: 761px) {
+    .insights {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-block: clamp(3rem, 6vw, 5rem);
+    }
+  }
+
   .insights__media { aspect-ratio: 5 / 4; overflow: hidden; }
   .insights__media img {
     transition: transform 1.2s var(--ease-out);
@@ -479,6 +637,15 @@
   .view { display: none; }
   .view.is-active { display: block; }
 
+  @media (min-width: 761px) {
+    .view.is-active {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+
   .view-header {
     padding-block: clamp(3rem, 8vw, 6rem) 2rem;
     border-bottom: 1px solid var(--line);
@@ -487,18 +654,38 @@
     justify-content: space-between;
     gap: 1rem;
   }
+
+  @media (min-width: 761px) {
+    .view-header {
+      padding-top: clamp(2rem, 4vw, 3rem);
+      padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+    }
+  }
+
   .view-header h1 {
     font-family: Georgia, serif;
     font-weight: 400;
     font-size: clamp(2rem, 5vw, 4rem);
     letter-spacing: -0.02em;
   }
+
   .view-body {
     padding-block: clamp(3rem, 7vw, 5rem);
     max-width: 62ch;
     font-size: 1.05rem;
     color: var(--muted);
   }
+
+  @media (min-width: 761px) {
+    .view.is-active > .view-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-block: clamp(2rem, 4vw, 3rem);
+    }
+  }
+
   .view-body p + p { margin-top: 1.25rem; }
 
   .back-btn {
@@ -618,18 +805,60 @@
       </div>
     </div>
 
-    <!-- EDITORIAL INTRO -->
+    <!-- EDITORIAL INTRO / STUDIO -->
     <div class="wrap intro reveal" id="studio">
-      <p class="eyebrow">The studio</p>
-      <h2 data-words>
-        An interdisciplinary team of architects, designers, and strategists operating at the convergence
-        of property, interior, and urban development — where ideas are tested early, prototyped often,
-        and every brief is shaped by evidence rather than assumption.
-      </h2>
+
+      <!-- Row 1 -->
+      <p class="eyebrow intro__eyebrow-studio">The studio</p>
+      <div class="intro__lede">
+        <h2 data-words>
+          An interdisciplinary team of architects, designers, and strategists operating at the convergence
+          of property, interior, and urban development — where ideas are tested early, prototyped often,
+          and every brief is shaped by evidence rather than assumption.
+        </h2>
+      </div>
+
+      <!-- Row 2 — "Our services" aligns with "Interior Design" -->
+      <p class="eyebrow intro__eyebrow-services">Our services</p>
+      <div class="intro__services">
+        <ul class="services" aria-label="Our services">
+          <li>
+            <a href="#" data-route="work">
+              <span>Interior Design</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" data-route="work">
+              <span>Architecture Design</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" data-route="work">
+              <span>Urban Design</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" data-route="work">
+              <span>Urban Solution Strategy</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" data-route="work">
+              <span>Project Management</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
     </div>
 
     <!-- PROJECT GRID with CURSOR SPOTLIGHT -->
-    <div class="wrap" id="work">
+    <div class="wrap section-block" id="work">
       <div class="section-head reveal">
         <div>
           <p class="eyebrow">Selected work</p>
@@ -989,19 +1218,17 @@
   startHero();
 
   /* =========================================================
-     4. SCROLL PROGRESS + HEADER SHOW/HIDE + PARALLAX
+     4. SCROLL PROGRESS + HEADER STATE + PARALLAX
      ========================================================= */
   const progress = document.getElementById('scrollProgress');
   const header = document.getElementById('siteHeader');
   const parallaxEls = Array.from(document.querySelectorAll('[data-parallax]'));
-  let lastScroll = 0;
   let ticking = false;
 
   function updateParallax() {
     if (reduceMotion) return;
     const vh = window.innerHeight;
 
-    // Parallax the whole slide container, not a single image
     if (heroSlidesEl) {
       const offset = Math.min(window.scrollY * 0.25, 200);
       heroSlidesEl.style.transform = `translateY(${offset}px)`;
@@ -1025,14 +1252,8 @@
     const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
     progress.style.width = pct + '%';
 
-    if (scrollTop > 120) {
-      header.classList.add('is-scrolled');
-      if (scrollTop > lastScroll) header.classList.add('is-hidden');
-      else header.classList.remove('is-hidden');
-    } else {
-      header.classList.remove('is-scrolled', 'is-hidden');
-    }
-    lastScroll = scrollTop;
+    if (scrollTop > 120) header.classList.add('is-scrolled');
+    else header.classList.remove('is-scrolled');
 
     updateParallax();
     ticking = false;
